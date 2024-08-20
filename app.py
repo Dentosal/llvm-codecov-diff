@@ -80,18 +80,29 @@ class ResultCell:
     old: OutOf
     new: OutOf
 
-    def __str__(self):
+    @property
+    def numbers(self):
         old = self.old
         new = self.new
 
         if old == new:
-            return f"{old.amount}/{old.total} (No change)"
+            return f"{old.amount}/{old.total}"
         elif old.total == new.total:
-            return f"{{{old.amount} -> {new.amount}}}/{new.total}"
+            return f"{{{old.amount} &rarr; {new.amount}}}/{new.total}"
         elif old.amount == new.amount:
-            return f"{old.amount}/{{{old.total} -> {new.total}}}"
+            return f"{old.amount}/{{{old.total} &rarr; {new.total}}}"
         else:
-            return f"{old.amount}/{old.total} -> {new.amount}/{new.total}"
+            da = new.amount - old.amount
+            dt = new.total - old.total
+            return f"{old.amount}/{old.total} &rarr; {new.amount}/{new.total}"
+
+    @property
+    def change(self):
+        if self.old == self.new:
+            return "(unchanged)"
+        da = self.new.amount - self.old.amount
+        dt = self.new.total - self.old.total
+        return f"({da:+}/{dt:+})"
 
     @property
     def style(self) -> str:
@@ -123,29 +134,36 @@ for file in files + [None]:
 html = """
 <html><head>
 <style>
+body {
+    font-family: monospace;
+}
 table {
     border: 1px solid black;
     border-collapse: collapse;
     width: 100%;
-    font-size: 1.2em;
 }
-td {
+th,td {
     border: 1px solid black;
-    padding: 5px;
+    padding: 2px;
 }
 </style>
 </head><body>
 """
 html += "<table><thead>"
-for header in headers:
-    html += f"<th>{header}</th>"
+html += f"<th>{headers[0]}</th>"
+for header in headers[1:]:
+    html += f'<th style="border-right: 0;">{header}</th>'
+    html += f'<th style="border-left: 0; text-align: right;">(change)</th>'
 html += "</thead><tbody>"
 for row in result:
     if row[0] != result[-1][0] and all(item.old == item.new for item in row[1:]):
         continue
     for cell in row:
-        style = getattr(cell, "style", "font-weight: bold; font: monospace;")
-        html += f'<td style="{style}">{cell}</td>'
+        if isinstance(cell, ResultCell):
+            html += f'<td style="border-right: 0; {cell.style}">{cell.numbers}</td>'
+            html += f'<td style="border-left: 0; text-align: right; {cell.style}">{cell.change}</td>'
+        else:
+            html += f'<td style="font-weight: bold; font: monospace;">{cell}</td>'
     html += "</tr>"
 html += "</tbody></table></body></html>"
 
